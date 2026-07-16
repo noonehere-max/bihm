@@ -1,0 +1,92 @@
+package com.example.bihm.ui.player
+
+import android.content.ContentUris
+import android.content.Context
+import android.media.MediaPlayer
+import android.provider.MediaStore
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.example.bihm.data.Song
+import com.example.bihm.data.scanLocalMusic
+
+class PlayerState(private val context: Context) {
+    var songs by mutableStateOf<List<Song>>(emptyList())
+        private set
+    var currentSong by mutableStateOf<Song?>(null)
+        private set
+    var isPlaying by mutableStateOf(false)
+        private set
+    var currentPosition by mutableIntStateOf(0)
+        private set
+    var audioSessionId by mutableIntStateOf(0)
+        private set
+
+    private var mediaPlayer: MediaPlayer? = null
+
+    fun loadSongs() {
+        songs = scanLocalMusic(context)
+    }
+
+    fun play(song: Song) {
+        release()
+        val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, song.id)
+        mediaPlayer = MediaPlayer().apply {
+            try {
+                setDataSource(context, uri)
+                prepare()
+                start()
+                setOnCompletionListener { playNext() }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        currentSong = song
+        isPlaying = true
+        currentPosition = 0
+        audioSessionId = mediaPlayer?.audioSessionId ?: 0
+    }
+
+    fun togglePlayPause() {
+        mediaPlayer?.let { player ->
+            if (player.isPlaying) {
+                player.pause()
+                isPlaying = false
+            } else {
+                player.start()
+                isPlaying = true
+            }
+        }
+    }
+
+    fun playNext() {
+        if (songs.isEmpty()) return
+        val index = songs.indexOfFirst { it.id == currentSong?.id }
+        val nextIndex = if (index == -1) 0 else (index + 1) % songs.size
+        play(songs[nextIndex])
+    }
+
+    fun playPrevious() {
+        if (songs.isEmpty()) return
+        val index = songs.indexOfFirst { it.id == currentSong?.id }
+        val prevIndex = if (index <= 0) songs.size - 1 else index - 1
+        play(songs[prevIndex])
+    }
+
+    fun seekTo(position: Int) {
+        mediaPlayer?.seekTo(position.coerceAtLeast(0))
+        currentPosition = position.coerceAtLeast(0)
+    }
+
+    fun updatePosition() {
+        mediaPlayer?.let { currentPosition = it.currentPosition }
+    }
+
+    fun release() {
+        mediaPlayer?.release()
+        mediaPlayer = null
+        isPlaying = false
+        audioSessionId = 0
+    }
+}
