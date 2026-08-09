@@ -10,6 +10,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.bihm.data.Song
 import com.example.bihm.data.scanLocalMusic
+import kotlin.random.Random
+
+enum class RepeatMode {
+    NONE, ALL, ONE
+}
 
 class PlayerState(private val context: Context) {
     var songs by mutableStateOf<List<Song>>(emptyList())
@@ -21,6 +26,10 @@ class PlayerState(private val context: Context) {
     var currentPosition by mutableIntStateOf(0)
         private set
     var audioSessionId by mutableIntStateOf(0)
+        private set
+    var isShuffle by mutableStateOf(false)
+        private set
+    var repeatMode by mutableStateOf(RepeatMode.NONE)
         private set
 
     private var mediaPlayer: MediaPlayer? = null
@@ -37,7 +46,14 @@ class PlayerState(private val context: Context) {
                 setDataSource(context, uri)
                 prepare()
                 start()
-                setOnCompletionListener { playNext() }
+                setOnCompletionListener {
+                    if (repeatMode == RepeatMode.ONE) {
+                        seekTo(0)
+                        start()
+                    } else {
+                        playNext()
+                    }
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -60,16 +76,42 @@ class PlayerState(private val context: Context) {
         }
     }
 
+    fun toggleShuffle() {
+        isShuffle = !isShuffle
+    }
+
+    fun cycleRepeatMode() {
+        repeatMode = RepeatMode.entries[(repeatMode.ordinal + 1) % RepeatMode.entries.size]
+    }
+
     fun playNext() {
         if (songs.isEmpty()) return
         val index = songs.indexOfFirst { it.id == currentSong?.id }
-        val nextIndex = if (index == -1) 0 else (index + 1) % songs.size
+        if (index == -1) {
+            play(songs[0])
+            return
+        }
+        val nextIndex = if (isShuffle) {
+            if (songs.size == 1) 0 else {
+                var randomIndex: Int
+                do {
+                    randomIndex = Random.nextInt(songs.size)
+                } while (randomIndex == index)
+                randomIndex
+            }
+        } else {
+            (index + 1) % songs.size
+        }
         play(songs[nextIndex])
     }
 
     fun playPrevious() {
         if (songs.isEmpty()) return
         val index = songs.indexOfFirst { it.id == currentSong?.id }
+        if (index == -1) {
+            play(songs[0])
+            return
+        }
         val prevIndex = if (index <= 0) songs.size - 1 else index - 1
         play(songs[prevIndex])
     }

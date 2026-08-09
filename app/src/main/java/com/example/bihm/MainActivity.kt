@@ -136,6 +136,7 @@ private fun BihmApp(
                 },
                 onPlayPause = { playerState.togglePlayPause() },
                 onNext = { playerState.playNext() },
+                onPrevious = { playerState.playPrevious() },
                 onNavigateToPlayer = { navController.navigate(Screen.Player.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
             )
@@ -145,12 +146,16 @@ private fun BihmApp(
             PlayerScreen(
                 currentSong = playerState.currentSong,
                 isPlaying = playerState.isPlaying,
+                isShuffle = playerState.isShuffle,
+                repeatMode = playerState.repeatMode,
                 currentPosition = playerState.currentPosition,
                 showAlbumArt = settingsState.showAlbumArt,
                 onPlayPause = { playerState.togglePlayPause() },
                 onNext = { playerState.playNext() },
                 onPrevious = { playerState.playPrevious() },
                 onSeek = { playerState.seekTo(it) },
+                onToggleShuffle = { playerState.toggleShuffle() },
+                onCycleRepeatMode = { playerState.cycleRepeatMode() },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
